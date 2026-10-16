@@ -1,0 +1,1 @@
+"""AI Challenge Bot package."""

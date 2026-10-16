@@ -1,0 +1,54 @@
+{
+  "name": "MINDWAR — AI Challenge Bot",
+  "description": "Интерактивный соревновательный Telegram-бот «AI VS Молодёжь»",
+  "keywords": ["telegram-bot", "ai", "aiogram", "python", "edtech", "gamification"],
+  "repository": "https://github.com/",
+  "env": {
+    "BOT_TOKEN": {
+      "description": "Токен Telegram-бота от @BotFather",
+      "required": true
+    },
+    "ADMIN_IDS": {
+      "description": "Telegram ID администраторов через запятую",
+      "required": false,
+      "value": "6104419350"
+    },
+    "AI_PROVIDER": {
+      "description": "Режим AI: mock, openai, openai_compatible",
+      "value": "mock",
+      "required": false
+    },
+    "AI_API_KEY": {
+      "description": "API ключ для внешнего AI-провайдера (если AI_PROVIDER=openai)",
+      "required": false,
+      "value": ""
+    },
+    "BOT_MODE": {
+      "description": "Режим работы бота (polling)",
+      "value": "polling",
+      "required": false
+    },
+    "LOG_LEVEL": {
+      "description": "Уровень логирования (INFO, DEBUG)",
+      "value": "INFO",
+      "required": false
+    }
+  },
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "eco"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:essential-0",
+      "as": "DATABASE"
+    }
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
+}

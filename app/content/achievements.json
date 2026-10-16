@@ -1,0 +1,137 @@
+[
+  {
+    "code": "first_win",
+    "name": "🏆 Первая победа",
+    "description": "Правильно ответь на своё первое задание",
+    "icon": "🏆",
+    "xp_reward": 50,
+    "condition_type": "correct_answers_total",
+    "condition_value": "1"
+  },
+  {
+    "code": "ai_detective_first",
+    "name": "🕵️ AI Детектив",
+    "description": "Найди свою первую ошибку в ответе AI",
+    "icon": "🕵️",
+    "xp_reward": 75,
+    "condition_type": "category_correct",
+    "condition_value": "{\"category\": \"detective\", \"count\": 1}"
+  },
+  {
+    "code": "prompt_master",
+    "name": "✍️ Мастер промптов",
+    "description": "Успешно выполни 5 заданий по промпт-инженерии",
+    "icon": "✍️",
+    "xp_reward": 100,
+    "condition_type": "category_correct",
+    "condition_value": "{\"category\": \"prompt\", \"count\": 5}"
+  },
+  {
+    "code": "seven_day_streak",
+    "name": "🔥 7 дней подряд",
+    "description": "Активен 7 дней подряд",
+    "icon": "🔥",
+    "xp_reward": 150,
+    "condition_type": "streak_days",
+    "condition_value": "7"
+  },
+  {
+    "code": "creative_mind",
+    "name": "🎨 Творческий ум",
+    "description": "Выполни 3 творческих задания",
+    "icon": "🎨",
+    "xp_reward": 100,
+    "condition_type": "category_correct",
+    "condition_value": "{\"category\": \"creative\", \"count\": 3}"
+  },
+  {
+    "code": "cyber_guardian",
+    "name": "🛡️ Страж кибербезопасности",
+    "description": "Пройди 5 заданий по кибербезопасности",
+    "icon": "🛡️",
+    "xp_reward": 100,
+    "condition_type": "category_correct",
+    "condition_value": "{\"category\": \"cyber\", \"count\": 5}"
+  },
+  {
+    "code": "comeback",
+    "name": "💪 Камбэк",
+    "description": "После неверного ответа дай правильный в следующем задании",
+    "icon": "💪",
+    "xp_reward": 50,
+    "condition_type": "comeback",
+    "condition_value": "1"
+  },
+  {
+    "code": "perfect_logic",
+    "name": "🧠 Логический гений",
+    "description": "Правильно ответь на 5 заданий по логике",
+    "icon": "🧠",
+    "xp_reward": 100,
+    "condition_type": "category_correct",
+    "condition_value": "{\"category\": \"logic\", \"count\": 5}"
+  },
+  {
+    "code": "daily_streak_3",
+    "name": "⚡ Три дня подряд",
+    "description": "Активен 3 дня подряд",
+    "icon": "⚡",
+    "xp_reward": 50,
+    "condition_type": "streak_days",
+    "condition_value": "3"
+  },
+  {
+    "code": "challenge_10",
+    "name": "🎯 Игрок",
+    "description": "Выполни 10 заданий",
+    "icon": "🎯",
+    "xp_reward": 75,
+    "condition_type": "challenges_completed",
+    "condition_value": "10"
+  },
+  {
+    "code": "challenge_25",
+    "name": "⚔️ Опытный боец",
+    "description": "Выполни 25 заданий",
+    "icon": "⚔️",
+    "xp_reward": 150,
+    "condition_type": "challenges_completed",
+    "condition_value": "25"
+  },
+  {
+    "code": "real_life_hero",
+    "name": "🌟 Реалист",
+    "description": "Реши 3 задания из реальной жизни",
+    "icon": "🌟",
+    "xp_reward": 75,
+    "condition_type": "category_correct",
+    "condition_value": "{\"category\": \"real_life\", \"count\": 3}"
+  },
+  {
+    "code": "level_3",
+    "name": "🚀 Промпт-инженер",
+    "description": "Достигни 3 уровня",
+    "icon": "🚀",
+    "xp_reward": 100,
+    "condition_type": "level_reached",
+    "condition_value": "3"
+  },
+  {
+    "code": "level_5",
+    "name": "👑 Мастер челленджей",
+    "description": "Достигни 5 уровня",
+    "icon": "👑",
+    "xp_reward": 250,
+    "condition_type": "level_reached",
+    "condition_value": "5"
+  },
+  {
+    "code": "daily_5",
+    "name": "📅 Постоянный игрок",
+    "description": "Выполни 5 ежедневных заданий",
+    "icon": "📅",
+    "xp_reward": 100,
+    "condition_type": "daily_completed",
+    "condition_value": "5"
+  }
+]
