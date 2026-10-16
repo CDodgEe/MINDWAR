@@ -15,12 +15,11 @@ class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_id(self, user_id: int) -> User | None:
-        result = await self.session.execute(
-            select(User)
-            .options(selectinload(User.settings))
-            .where(User.id == user_id, User.is_deleted == False)  # noqa: E712
-        )
+    async def get_by_id(self, user_id: int, include_deleted: bool = False) -> User | None:
+        query = select(User).options(selectinload(User.settings)).where(User.id == user_id)
+        if not include_deleted:
+            query = query.where(User.is_deleted == False)  # noqa: E712
+        result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
     async def create(
@@ -49,8 +48,17 @@ class UserRepository:
         username: str | None = None,
         language_code: str = "ru",
     ) -> tuple[User, bool]:
-        user = await self.get_by_id(user_id)
+        user = await self.get_by_id(user_id, include_deleted=True)
         if user:
+            if user.is_deleted:
+                user.is_deleted = False
+                user.display_name = display_name
+                user.username = username
+                user.language_code = language_code
+                if not user.settings:
+                    settings = UserSettings(user_id=user_id)
+                    self.session.add(settings)
+                await self.session.flush()
             return user, False
         user = await self.create(user_id, display_name, username, language_code)
         return user, True

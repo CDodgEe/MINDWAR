@@ -103,7 +103,19 @@ async def on_language_kz_soon(callback: CallbackQuery) -> None:
 @router.message(RegistrationStates.waiting_for_name)
 async def on_name_entered(message: Message, session: AsyncSession, state: FSMContext) -> None:
     """Обработка введённого имени."""
-    raw_name = message.text.strip() if message.text else ""
+    # Проверяем, если отправлена команда или кнопка меню вместо имени
+    menu_buttons = {
+        "⚔️ AI Battle", "🧠 Ежедневный", "🎯 Выбрать задание",
+        "🏆 Рейтинг", "👤 Профиль", "📊 Статистика",
+        "🎖️ Достижения", "❓ Как играть",
+    }
+    if raw_name in menu_buttons or raw_name.startswith("/"):
+        await state.clear()
+        user_repo = UserRepository(session)
+        existing_user = await user_repo.get_by_id(message.from_user.id)
+        if existing_user:
+            await message.answer("Главное меню:", reply_markup=main_menu_keyboard())
+            return
 
     # Валидация имени
     if not raw_name:
@@ -134,6 +146,17 @@ async def on_name_entered(message: Message, session: AsyncSession, state: FSMCon
     )
 
     await state.clear()
+
+    if not created:
+        await message.answer(
+            f"⚡ С возвращением, <b>{user.display_name}</b>!\n\n"
+            f"Уровень: {LEVEL_ICONS.get(user.level, '🌱')} {LEVEL_NAMES.get(user.level, 'Новичок')}\n"
+            f"XP: <code>{user.total_xp}</code>\n"
+            f"Прогресс: {get_progress_bar(user.total_xp)}",
+            reply_markup=main_menu_keyboard(),
+            parse_mode="HTML",
+        )
+        return
 
     # Показываем карточку игрока
     await message.answer(
