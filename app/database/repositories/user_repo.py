@@ -95,6 +95,7 @@ class UserRepository:
     async def get_top_users(self, limit: int = 10, offset: int = 0) -> list[User]:
         result = await self.session.execute(
             select(User)
+            .options(selectinload(User.settings))
             .where(User.is_deleted == False, User.is_banned == False)  # noqa: E712
             .order_by(User.total_xp.desc())
             .limit(limit)
