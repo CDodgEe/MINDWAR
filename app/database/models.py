@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import (
     BigInteger,
@@ -33,7 +32,7 @@ class Base(DeclarativeBase):
 # ===================== ENUMS =====================
 
 
-class ChallengeCategory(str, enum.Enum):
+class ChallengeCategory(enum.StrEnum):
     LOGIC = "logic"
     PROMPT = "prompt"
     DETECTIVE = "detective"
@@ -42,33 +41,33 @@ class ChallengeCategory(str, enum.Enum):
     REAL_LIFE = "real_life"
 
 
-class ChallengeDifficulty(str, enum.Enum):
+class ChallengeDifficulty(enum.StrEnum):
     EASY = "easy"
     MEDIUM = "medium"
     HARD = "hard"
 
 
-class ChallengeFormat(str, enum.Enum):
+class ChallengeFormat(enum.StrEnum):
     HUMAN_FIRST = "human_first"
     AI_DETECTIVE = "ai_detective"
     CO_CREATION = "co_creation"
     MULTIPLE_CHOICE = "multiple_choice"
 
 
-class AnswerType(str, enum.Enum):
+class AnswerType(enum.StrEnum):
     TEXT = "text"
     CHOICE = "choice"
     RANKING = "ranking"
 
 
-class BattleResult(str, enum.Enum):
+class BattleResult(enum.StrEnum):
     WIN = "win"
     LOSE = "lose"
     DRAW = "draw"
     INCOMPLETE = "incomplete"
 
 
-class XPTransactionType(str, enum.Enum):
+class XPTransactionType(enum.StrEnum):
     CHALLENGE_COMPLETE = "challenge_complete"
     DAILY_BONUS = "daily_bonus"
     STREAK_BONUS = "streak_bonus"
@@ -84,7 +83,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)  # Telegram user ID
-    username: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    username: Mapped[str | None] = mapped_column(String(64), nullable=True)
     display_name: Mapped[str] = mapped_column(String(64), nullable=False)
     language_code: Mapped[str] = mapped_column(String(8), default="ru", nullable=False)
 
@@ -101,7 +100,9 @@ class User(Base):
 
     # Серия дней
     streak_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    last_active_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_active_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Метаданные
     created_at: Mapped[datetime] = mapped_column(
@@ -114,7 +115,7 @@ class User(Base):
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Связи
-    settings: Mapped[Optional[UserSettings]] = relationship(
+    settings: Mapped[UserSettings | None] = relationship(
         "UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
     attempts: Mapped[list[ChallengeAttempt]] = relationship(
@@ -150,11 +151,11 @@ class UserSettings(Base):
     # Приватность
     show_in_leaderboard: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     use_pseudonym: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    pseudonym: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    pseudonym: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # Уведомления
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    daily_reminder_hour: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    daily_reminder_hour: Mapped[int | None] = mapped_column(Integer, nullable=True)
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Almaty", nullable=False)
 
     # Связи
@@ -170,9 +171,7 @@ class Challenge(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     external_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     title: Mapped[str] = mapped_column(String(256), nullable=False)
-    category: Mapped[ChallengeCategory] = mapped_column(
-        Enum(ChallengeCategory), nullable=False
-    )
+    category: Mapped[ChallengeCategory] = mapped_column(Enum(ChallengeCategory), nullable=False)
     difficulty: Mapped[ChallengeDifficulty] = mapped_column(
         Enum(ChallengeDifficulty), nullable=False
     )
@@ -181,20 +180,20 @@ class Challenge(Base):
 
     # Контент
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    ai_response: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # для AI Detective
-    options: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: список вариантов
-    correct_answer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ai_response: Mapped[str | None] = mapped_column(Text, nullable=True)  # для AI Detective
+    options: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: список вариантов
+    correct_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
-    evaluation_criteria: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    evaluation_criteria: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
 
     # Награды
     xp_base: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
     xp_max: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
-    time_limit_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    time_limit_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Метаданные
-    tags: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)  # JSON список
-    source: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    tags: Mapped[str | None] = mapped_column(String(256), nullable=True)  # JSON список
+    source: Mapped[str | None] = mapped_column(String(512), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_daily_eligible: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -228,17 +227,17 @@ class ChallengeAttempt(Base):
     )
 
     # Ответ пользователя
-    user_answer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    selected_option: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    user_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    selected_option: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Результат
     is_correct: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     score_percent: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     xp_earned: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    feedback: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Метаданные
-    time_spent_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    time_spent_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_first_attempt: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     xp_rewarded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -248,7 +247,7 @@ class ChallengeAttempt(Base):
     # Связи
     user: Mapped[User] = relationship("User", back_populates="attempts")
     challenge: Mapped[Challenge] = relationship("Challenge", back_populates="attempts")
-    battle_session: Mapped[Optional[BattleSession]] = relationship(
+    battle_session: Mapped[BattleSession | None] = relationship(
         "BattleSession", back_populates="attempt"
     )
 
@@ -269,7 +268,7 @@ class BattleSession(Base):
     user_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    attempt_id: Mapped[Optional[int]] = mapped_column(
+    attempt_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("challenge_attempts.id"), nullable=True
     )
 
@@ -280,7 +279,7 @@ class BattleSession(Base):
     )
 
     # AI-ответ для этой битвы
-    ai_response_used: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ai_response_used: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_provider_used: Mapped[str] = mapped_column(String(64), default="mock", nullable=False)
 
     # Оценки
@@ -290,13 +289,11 @@ class BattleSession(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    completed_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Связи
     user: Mapped[User] = relationship("User", back_populates="battle_sessions")
-    attempt: Mapped[Optional[ChallengeAttempt]] = relationship(
+    attempt: Mapped[ChallengeAttempt | None] = relationship(
         "ChallengeAttempt", back_populates="battle_session"
     )
 
@@ -316,7 +313,7 @@ class Achievement(Base):
     icon: Mapped[str] = mapped_column(String(8), default="🏅", nullable=False)
     xp_reward: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
     condition_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    condition_value: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)  # JSON
+    condition_value: Mapped[str | None] = mapped_column(String(256), nullable=True)  # JSON
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Связи
@@ -341,7 +338,9 @@ class UserAchievement(Base):
 
     # Связи
     user: Mapped[User] = relationship("User", back_populates="achievements")
-    achievement: Mapped[Achievement] = relationship("Achievement", back_populates="user_achievements")
+    achievement: Mapped[Achievement] = relationship(
+        "Achievement", back_populates="user_achievements"
+    )
 
     __table_args__ = (
         UniqueConstraint("user_id", "achievement_id", name="uq_user_achievement"),
@@ -363,7 +362,7 @@ class XPTransaction(Base):
     transaction_type: Mapped[XPTransactionType] = mapped_column(
         Enum(XPTransactionType), nullable=False
     )
-    reference_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    reference_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     description: Mapped[str] = mapped_column(String(256), nullable=False)
     xp_before: Mapped[int] = mapped_column(Integer, nullable=False)
     xp_after: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -387,9 +386,7 @@ class DailyChallenge(Base):
     __tablename__ = "daily_challenges"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    challenge_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("challenges.id"), nullable=False
-    )
+    challenge_id: Mapped[int] = mapped_column(Integer, ForeignKey("challenges.id"), nullable=False)
     date: Mapped[str] = mapped_column(String(10), nullable=False)  # YYYY-MM-DD
 
     # Связи
@@ -416,9 +413,7 @@ class UserDailyChallenge(Base):
     )
     completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     xp_earned: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Связи
     user: Mapped[User] = relationship("User", back_populates="daily_challenges")

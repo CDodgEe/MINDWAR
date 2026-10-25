@@ -144,7 +144,7 @@ class LLMProvider(BaseAIProvider):
         try:
             raw = await self._chat_completion(messages, max_tokens=400)
             # Ищем JSON в ответе
-            json_match = raw[raw.find("{"):raw.rfind("}") + 1]
+            json_match = raw[raw.find("{") : raw.rfind("}") + 1]
             data = json.loads(json_match)
 
             # Валидация структуры
@@ -164,6 +164,7 @@ class LLMProvider(BaseAIProvider):
             logger.warning("LLM evaluation error: %s", type(e).__name__)
             # Fallback оценка
             from app.ai.mock_provider import MockAIProvider
+
             return await MockAIProvider().evaluate_open_answer(
                 challenge_description, user_answer, evaluation_criteria, reference_answer
             )

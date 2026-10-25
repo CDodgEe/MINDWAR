@@ -22,6 +22,7 @@ def get_ai_provider() -> BaseAIProvider:
             logger.info("AI provider: Mock (no API key configured)")
         else:
             from app.ai.llm_provider import LLMProvider
+
             _provider = LLMProvider()
             logger.info("AI provider: LLM (%s)", settings.ai_model)
     return _provider

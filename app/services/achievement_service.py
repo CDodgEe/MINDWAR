@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Achievement, User, XPTransactionType
 from app.database.repositories import AchievementRepository, XPRepository
+from app.services.xp_service import get_level
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class AchievementService:
                 if achievement.xp_reward > 0:
                     xp_before = user.total_xp
                     user.total_xp += achievement.xp_reward
+                    user.level = get_level(user.total_xp)
                     await self.xp_repo.create(
                         user_id=user_id,
                         amount=achievement.xp_reward,
@@ -57,30 +59,32 @@ class AchievementService:
             cval = achievement.condition_value
 
             if ctype == "correct_answers_total":
-                return user.correct_answers >= int(cval)
+                return user.correct_answers >= int(cval or 0)
 
             elif ctype == "challenges_completed":
-                return user.challenges_completed >= int(cval)
+                return user.challenges_completed >= int(cval or 0)
 
             elif ctype == "streak_days":
-                return user.streak_days >= int(cval)
+                return user.streak_days >= int(cval or 0)
 
             elif ctype == "level_reached":
-                return user.level >= int(cval)
+                return user.level >= int(cval or 0)
 
             elif ctype == "category_correct":
                 data = json.loads(cval) if cval else {}
-                from app.database.repositories import AttemptRepository
                 from app.database.models import ChallengeCategory
+                from app.database.repositories import AttemptRepository
+
                 repo = AttemptRepository(self.session)
                 category = ChallengeCategory(data.get("category", "logic"))
                 count = await repo.count_user_category_completions(user.id, category)
                 return count >= data.get("count", 1)
 
             elif ctype == "daily_completed":
-                from app.database.repositories import DailyChallengeRepository
                 from sqlalchemy import select
+
                 from app.database.models import UserDailyChallenge
+
                 result = await self.session.execute(
                     select(UserDailyChallenge).where(
                         UserDailyChallenge.user_id == user.id,
@@ -88,11 +92,12 @@ class AchievementService:
                     )
                 )
                 completed_count = len(result.scalars().all())
-                return completed_count >= int(cval)
+                return completed_count >= int(cval or 0)
 
             elif ctype == "comeback":
                 # Проверяем: последние 2 попытки = неверная, потом верная
                 from app.database.repositories import AttemptRepository
+
                 repo = AttemptRepository(self.session)
                 attempts = await repo.get_user_attempts(user.id, limit=2)
                 if len(attempts) >= 2:

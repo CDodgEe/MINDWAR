@@ -6,17 +6,12 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.ai_service import AIService
 from app.database.models import (
-    AnswerType,
-    BattleResult,
-    BattleSession,
     Challenge,
-    ChallengeAttempt,
     ChallengeCategory,
     ChallengeFormat,
     XPTransactionType,
@@ -55,13 +50,17 @@ class ChallengeService:
         return await self.challenge_repo.get_by_id(challenge_id)
 
     async def get_random_challenge(
-        self, category: ChallengeCategory | None = None
+        self,
+        category: ChallengeCategory | None = None,
+        challenge_format: ChallengeFormat | None = None,
+        format: ChallengeFormat | None = None,  # noqa: A002
     ) -> Challenge | None:
-        return await self.challenge_repo.get_random(category)
+        selected_fmt = challenge_format or format
+        return await self.challenge_repo.get_random(
+            category=category, challenge_format=selected_fmt
+        )
 
-    async def get_challenges_by_category(
-        self, category: ChallengeCategory
-    ) -> list[Challenge]:
+    async def get_challenges_by_category(self, category: ChallengeCategory) -> list[Challenge]:
         return await self.challenge_repo.get_by_category(category)
 
     async def get_options_list(self, challenge: Challenge) -> list[str] | None:
@@ -218,9 +217,16 @@ class ChallengeService:
 
         # Обновляем статистику
         if is_first_attempt:
+            is_battle = challenge.format in (
+                ChallengeFormat.HUMAN_FIRST,
+                ChallengeFormat.AI_DETECTIVE,
+                ChallengeFormat.CO_CREATION,
+            )
             await self.user_repo.increment_stats(
                 user_id=user_id,
                 challenges_completed=1,
+                battles_won=1 if (is_battle and is_correct) else 0,
+                battles_total=1 if is_battle else 0,
                 correct_answers=1 if is_correct else 0,
                 total_answers=1,
             )

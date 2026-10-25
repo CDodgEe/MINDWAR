@@ -12,6 +12,8 @@ from app.keyboards.keyboards import (
     remove_keyboard,
     settings_keyboard,
     start_keyboard,
+    start_new_user_keyboard,
+    start_registered_keyboard,
 )
 
 __all__ = [
@@ -26,4 +28,6 @@ __all__ = [
     "remove_keyboard",
     "settings_keyboard",
     "start_keyboard",
+    "start_new_user_keyboard",
+    "start_registered_keyboard",
 ]

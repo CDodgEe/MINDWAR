@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from aiogram import Router
 
-from app.handlers import admin, challenges, daily, help, leaderboard, profile, start
+from app.handlers import admin, challenges, daily, help, leaderboard, profile, start  # noqa: A004
 
 
 def get_all_routers() -> list[Router]:
@@ -28,7 +28,7 @@ __all__ = [
     "challenges",
     "daily",
     "get_all_routers",
-    "help",
+    "help",  # noqa: A004
     "leaderboard",
     "profile",
     "start",

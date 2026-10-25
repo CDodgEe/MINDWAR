@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import random
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Challenge, ChallengeAttempt, ChallengeCategory
+from app.database.models import (
+    AnswerType,
+    Challenge,
+    ChallengeAttempt,
+    ChallengeCategory,
+    ChallengeFormat,
+)
 
 
 class ChallengeRepository:
@@ -36,10 +42,22 @@ class ChallengeRepository:
         )
         return list(result.scalars().all())
 
-    async def get_random(self, category: ChallengeCategory | None = None) -> Challenge | None:
-        query = select(Challenge).where(Challenge.is_active == True)  # noqa
+    async def get_random(
+        self,
+        category: ChallengeCategory | None = None,
+        challenge_format: ChallengeFormat | None = None,
+        format: ChallengeFormat | None = None,  # noqa: A002
+    ) -> Challenge | None:
+        selected_fmt = challenge_format or format
+        query = select(Challenge).where(Challenge.is_active == True)  # noqa: E712
         if category:
             query = query.where(Challenge.category == category)
+        if selected_fmt:
+            format_query = query.where(Challenge.format == selected_fmt)
+            result = await self.session.execute(format_query)
+            challenges = list(result.scalars().all())
+            if challenges:
+                return random.choice(challenges)  # noqa: S311
         result = await self.session.execute(query)
         challenges = list(result.scalars().all())
         return random.choice(challenges) if challenges else None  # noqa: S311
@@ -53,8 +71,10 @@ class ChallengeRepository:
     async def get_daily_eligible(self) -> list[Challenge]:
         result = await self.session.execute(
             select(Challenge).where(
-                Challenge.is_active == True,  # noqa
-                Challenge.is_daily_eligible == True,  # noqa
+                Challenge.is_active == True,  # noqa: E712
+                Challenge.is_daily_eligible == True,  # noqa: E712
+                Challenge.answer_type == AnswerType.CHOICE,
+                Challenge.options.isnot(None),
             )
         )
         return list(result.scalars().all())
@@ -140,12 +160,12 @@ class AttemptRepository:
         self, user_id: int, category: ChallengeCategory
     ) -> int:
         result = await self.session.execute(
-            select(ChallengeAttempt)
-            .join(Challenge)
+            select(func.count(func.distinct(ChallengeAttempt.challenge_id)))
+            .join(Challenge, Challenge.id == ChallengeAttempt.challenge_id)
             .where(
                 ChallengeAttempt.user_id == user_id,
                 Challenge.category == category,
                 ChallengeAttempt.is_correct == True,  # noqa
             )
         )
-        return len(result.scalars().all())
+        return result.scalar() or 0

@@ -17,7 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database.models import Challenge, ChallengeAttempt, User, XPTransaction
+from app.database.models import Challenge, ChallengeAttempt, User
 from app.database.repositories import UserRepository
 from app.filters.filters import AdminFilter
 
@@ -68,9 +68,12 @@ async def admin_stats_callback(callback: CallbackQuery, session: AsyncSession) -
     """Детальная статистика бота."""
     total_users = await session.scalar(select(func.count(User.id))) or 0
     total_attempts = await session.scalar(select(func.count(ChallengeAttempt.id))) or 0
-    correct_attempts = await session.scalar(
-        select(func.count(ChallengeAttempt.id)).where(ChallengeAttempt.is_correct == True)  # noqa
-    ) or 0
+    correct_attempts = (
+        await session.scalar(
+            select(func.count(ChallengeAttempt.id)).where(ChallengeAttempt.is_correct == True)  # noqa
+        )
+        or 0
+    )
     total_xp = await session.scalar(select(func.sum(User.total_xp))) or 0
 
     winrate = (correct_attempts / total_attempts * 100) if total_attempts > 0 else 0.0
@@ -86,7 +89,8 @@ async def admin_stats_callback(callback: CallbackQuery, session: AsyncSession) -
     )
     builder = InlineKeyboardBuilder()
     builder.button(text="⬅️ Назад", callback_data="admin_back")
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
 
@@ -106,7 +110,8 @@ async def admin_back_callback(callback: CallbackQuery, session: AsyncSession) ->
         f"📡 <b>Режим бота:</b> <code>{settings.bot_mode}</code>\n\n"
         "Выберите действие:"
     )
-    await callback.message.edit_text(text, reply_markup=admin_panel_keyboard(), parse_mode="HTML")
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(text, reply_markup=admin_panel_keyboard(), parse_mode="HTML")
     await callback.answer()
 
 
@@ -116,24 +121,29 @@ async def admin_broadcast_start(callback: CallbackQuery, state: FSMContext) -> N
     await state.set_state(AdminBroadcastState.waiting_for_message)
     builder = InlineKeyboardBuilder()
     builder.button(text="❌ Отмена", callback_data="admin_broadcast_cancel")
-    await callback.message.edit_text(
-        "📢 <b>Рассылка сообщения</b>\n\n"
-        "Отправьте текст сообщения для рассылки всем пользователям бота (поддерживается HTML-разметка).",
-        reply_markup=builder.as_markup(),
-        parse_mode="HTML",
-    )
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(
+            "📢 <b>Рассылка сообщения</b>\n\n"
+            "Отправьте текст сообщения для рассылки всем пользователям бота (поддерживается HTML-разметка).",
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML",
+        )
     await callback.answer()
 
 
 @router.callback_query(F.data == "admin_broadcast_cancel")
-async def admin_broadcast_cancel(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
+async def admin_broadcast_cancel(
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession
+) -> None:
     """Отмена рассылки."""
     await state.clear()
     await admin_back_callback(callback, session)
 
 
 @router.message(AdminBroadcastState.waiting_for_message)
-async def process_broadcast_message(message: Message, state: FSMContext, session: AsyncSession) -> None:
+async def process_broadcast_message(
+    message: Message, state: FSMContext, session: AsyncSession
+) -> None:
     """Отправка рассылки пользователям."""
     broadcast_text = message.html_text or message.text
     await state.clear()
@@ -145,16 +155,17 @@ async def process_broadcast_message(message: Message, state: FSMContext, session
     failed = 0
     status_msg = await message.answer("🚀 Начинаю рассылку...")
 
-    for u in users:
-        try:
-            await message.bot.send_message(
-                chat_id=u.id,
-                text=f"📢 <b>Сообщение от AI Challenge:</b>\n\n{broadcast_text}",
-                parse_mode="HTML",
-            )
-            sent += 1
-        except Exception:
-            failed += 1
+    if message.bot:
+        for u in users:
+            try:
+                await message.bot.send_message(
+                    chat_id=u.id,
+                    text=f"📢 <b>Сообщение от AI Challenge:</b>\n\n{broadcast_text}",
+                    parse_mode="HTML",
+                )
+                sent += 1
+            except Exception:
+                failed += 1
 
     await status_msg.edit_text(
         f"✅ <b>Рассылка завершена!</b>\n\n"
@@ -180,5 +191,6 @@ async def admin_reload_content(callback: CallbackQuery, session: AsyncSession) -
 @router.callback_query(F.data == "admin_close")
 async def admin_close(callback: CallbackQuery) -> None:
     """Закрыть панель администратора."""
-    await callback.message.delete()
+    if isinstance(callback.message, Message):
+        await callback.message.delete()
     await callback.answer()

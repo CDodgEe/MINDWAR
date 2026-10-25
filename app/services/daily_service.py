@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Challenge, UserDailyChallenge, XPTransactionType
+from app.database.models import (
+    AnswerType,
+    Challenge,
+    UserDailyChallenge,
+    XPTransactionType,
+)
 from app.database.repositories import (
     ChallengeRepository,
     DailyChallengeRepository,
@@ -32,23 +38,38 @@ class DailyChallengeService:
         self.xp_repo = XPRepository(session)
 
     def _get_today_str(self) -> str:
-        return datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+        return datetime.now(tz=UTC).strftime("%Y-%m-%d")
 
     async def get_or_assign_daily(self) -> tuple[Challenge, str]:
         """Получить или назначить ежедневное задание. Возвращает (задание, дату)."""
         today = self._get_today_str()
         dc = await self.daily_repo.get_by_date(today)
 
+        # Если задание уже было создано ранее без вариантов (например, текстовое), заменяем его на выбор
+        if dc and (
+            not dc.challenge
+            or not dc.challenge.options
+            or dc.challenge.answer_type != AnswerType.CHOICE
+        ):
+            eligible = await self.challenge_repo.get_daily_eligible()
+            if eligible:
+                challenge = random.choice(eligible)  # noqa: S311
+                dc.challenge_id = challenge.id
+                dc.challenge = challenge
+                await self.session.flush()
+
         if not dc:
-            # Выбираем случайное задание
+            # Выбираем случайное задание с вариантами ответа
             eligible = await self.challenge_repo.get_daily_eligible()
             if not eligible:
                 raise ValueError("Нет доступных заданий для ежедневного вызова")
             challenge = random.choice(eligible)  # noqa: S311
             dc = await self.daily_repo.create(challenge.id, today)
+            dc.challenge = challenge
             await self.session.flush()
-            # Перезагружаем с join
-            dc = await self.daily_repo.get_by_date(today)
+
+        if not dc or not dc.challenge:
+            raise ValueError("Не удалось получить ежедневное задание")
 
         return dc.challenge, today
 
@@ -62,12 +83,14 @@ class DailyChallengeService:
             return None
         return await self.daily_repo.get_user_completion(user_id, dc.id)
 
-    async def mark_daily_complete(
-        self, user_id: int, xp_earned: int
-    ) -> dict:
+    async def mark_daily_complete(self, user_id: int, xp_earned: int = 0) -> dict:  # noqa: ARG002
         """Отметить ежедневное задание выполненным и начислить бонус."""
         today = self._get_today_str()
         dc = await self.daily_repo.get_by_date(today)
+        if not dc:
+            with contextlib.suppress(Exception):
+                await self.get_or_assign_daily()
+                dc = await self.daily_repo.get_by_date(today)
         if not dc:
             return {"error": "no_daily_today"}
 
@@ -90,7 +113,7 @@ class DailyChallengeService:
         streak_bonus = 0
 
         # Обновляем серию дней
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         new_streak = await self._update_streak(user, now)
 
         if new_streak > 1:
@@ -133,7 +156,7 @@ class DailyChallengeService:
 
         last = user.last_active_date
         if last.tzinfo is None:
-            last = last.replace(tzinfo=timezone.utc)
+            last = last.replace(tzinfo=UTC)
 
         days_diff = (now.date() - last.date()).days
 

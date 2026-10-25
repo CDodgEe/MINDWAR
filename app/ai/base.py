@@ -12,6 +12,7 @@ from dataclasses import dataclass
 @dataclass
 class AIEvaluationResult:
     """Структурированный результат оценки открытого ответа."""
+
     score_percent: float  # 0.0 - 100.0
     is_correct: bool
     feedback: str
@@ -22,6 +23,7 @@ class AIEvaluationResult:
 @dataclass
 class AIResponse:
     """Ответ AI на задание."""
+
     content: str
     provider: str
     model: str | None = None

@@ -7,10 +7,11 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, Update
+from aiogram.types import TelegramObject
 
 from app.config import get_settings
 from app.database.session import AsyncSessionFactory
@@ -68,6 +69,7 @@ class RateLimitMiddleware(BaseMiddleware):
             if len(self._requests[user_id]) >= self._max:
                 logger.warning("Rate limit exceeded for user %s", user_id)
                 from aiogram.types import CallbackQuery
+
                 if isinstance(event, CallbackQuery):
                     await event.answer(
                         "⏳ Слишком много запросов. Подожди немного.",

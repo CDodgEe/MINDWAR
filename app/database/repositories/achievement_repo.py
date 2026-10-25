@@ -45,7 +45,5 @@ class AchievementRepository:
         return ua
 
     async def get_by_code(self, code: str) -> Achievement | None:
-        result = await self.session.execute(
-            select(Achievement).where(Achievement.code == code)
-        )
+        result = await self.session.execute(select(Achievement).where(Achievement.code == code))
         return result.scalar_one_or_none()

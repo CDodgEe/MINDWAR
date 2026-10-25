@@ -9,7 +9,6 @@ import logging
 
 from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 
 from app.config import get_settings
@@ -29,7 +28,9 @@ async def job_rotate_daily_challenge() -> None:
             daily_service = DailyChallengeService(session)
             challenge, date_str = await daily_service.get_or_assign_daily()
             await session.commit()
-            logger.info(f"Daily challenge for {date_str} successfully rotated: [{challenge.external_id}] {challenge.title}")
+            logger.info(
+                f"Daily challenge for {date_str} successfully rotated: [{challenge.external_id}] {challenge.title}"
+            )
     except Exception as e:
         logger.error(f"Error rotating daily challenge: {e}", exc_info=True)
 
@@ -78,28 +79,6 @@ async def job_send_daily_reminders(bot: Bot) -> None:
         logger.error(f"Error in daily reminders job: {e}", exc_info=True)
 
 
-def setup_scheduler(bot: Bot) -> AsyncIOScheduler:
-    """Инициализация и настройка задач планировщика."""
-    scheduler = AsyncIOScheduler(timezone=settings.daily_challenge_tz)
-
-    # Ежедневная ротация в заданный час (по умолчанию 09:00)
-    scheduler.add_job(
-        job_rotate_daily_challenge,
-        trigger=CronTrigger(hour=settings.daily_challenge_hour, minute=0),
-        id="rotate_daily_challenge",
-        name="Rotate daily challenge",
-        replace_existing=True,
-    )
-
-    # Ежедневное напоминание через 2 часа после ротации (по умолчанию 11:00)
-    reminder_hour = (settings.daily_challenge_hour + 2) % 24
-    scheduler.add_job(
-        job_send_daily_reminders,
-        trigger=CronTrigger(hour=reminder_hour, minute=0),
-        args=[bot],
-        id="send_daily_reminders",
-        name="Send daily reminders",
-        replace_existing=True,
-    )
-
-    return scheduler
+def setup_scheduler(bot: Bot) -> AsyncIOScheduler:  # noqa: ARG001
+    """Инициализация планировщика фоновых задач."""
+    return AsyncIOScheduler(timezone=settings.daily_challenge_tz)

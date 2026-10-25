@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import random
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload

@@ -55,3 +55,14 @@ class TestAIService:
         assert result.score_percent >= 50.0
         assert len(result.feedback) > 0
         assert result.is_correct is True
+
+    async def test_mock_provider_evaluate_short_answer(self):
+        """Оценка слишком короткого ответа (< 20 символов)."""
+        provider = MockAIProvider()
+        result = await provider.evaluate_open_answer(
+            challenge_description="Решите задачу",
+            user_answer="коротко",
+            evaluation_criteria={"criteria": ["test"], "min_score_to_pass": 1},
+        )
+        assert result.is_correct is False
+        assert result.score_percent == 15.0

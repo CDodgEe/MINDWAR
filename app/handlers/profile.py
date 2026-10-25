@@ -10,7 +10,11 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.repositories import AchievementRepository, UserRepository
-from app.keyboards.keyboards import main_menu_keyboard, profile_keyboard, settings_keyboard
+from app.keyboards.keyboards import (
+    back_to_profile_keyboard,
+    profile_keyboard,
+    settings_keyboard,
+)
 from app.services.leaderboard_service import LeaderboardService
 from app.services.xp_service import (
     LEVEL_ICONS,
@@ -29,7 +33,11 @@ router = Router()
 @router.callback_query(F.data == "show_profile")
 async def show_profile(event: Message | CallbackQuery, session: AsyncSession) -> None:
     """Показать профиль игрока."""
-    is_callback = isinstance(event, CallbackQuery)
+    if not event.from_user:
+        return
+
+    if isinstance(event, CallbackQuery):
+        await event.answer()
     user_id = event.from_user.id
 
     user_repo = UserRepository(session)
@@ -37,10 +45,10 @@ async def show_profile(event: Message | CallbackQuery, session: AsyncSession) ->
 
     if not user:
         text = "👋 Сначала зарегистрируйся — /start"
-        if is_callback:
-            await event.message.edit_text(text)
-            await event.answer()
-        else:
+        if isinstance(event, CallbackQuery):
+            if isinstance(event.message, Message):
+                await event.message.edit_text(text)
+        elif isinstance(event, Message):
             await event.answer(text)
         return
 
@@ -48,16 +56,14 @@ async def show_profile(event: Message | CallbackQuery, session: AsyncSession) ->
     level_icon = LEVEL_ICONS.get(level, "🌱")
     level_name = LEVEL_NAMES.get(level, "Новичок")
     progress_bar = get_progress_bar(user.total_xp)
-    xp_needed, next_threshold = get_xp_for_next_level(user.total_xp)
+    xp_needed, _next_threshold = get_xp_for_next_level(user.total_xp)
 
     accuracy = 0
     if user.total_answers > 0:
         accuracy = int((user.correct_answers / user.total_answers) * 100)
 
     next_level_text = (
-        f"До следующего уровня: {xp_needed} XP"
-        if xp_needed > 0
-        else "🏆 Максимальный уровень!"
+        f"До следующего уровня: {xp_needed} XP" if xp_needed > 0 else "🏆 Максимальный уровень!"
     )
 
     streak_text = f"🔥 Серия: {user.streak_days} дней" if user.streak_days > 0 else ""
@@ -86,22 +92,24 @@ async def show_profile(event: Message | CallbackQuery, session: AsyncSession) ->
         f"└─────────────────────────┘"
     )
 
-    if is_callback:
-        await event.message.edit_text(
-            profile_text, reply_markup=profile_keyboard(), parse_mode="HTML"
-        )
-        await event.answer()
-    else:
-        await event.answer(
-            profile_text, reply_markup=profile_keyboard(), parse_mode="HTML"
-        )
+    if isinstance(event, CallbackQuery):
+        if isinstance(event.message, Message):
+            await event.message.edit_text(
+                profile_text, reply_markup=profile_keyboard(), parse_mode="HTML"
+            )
+    elif isinstance(event, Message):
+        await event.answer(profile_text, reply_markup=profile_keyboard(), parse_mode="HTML")
 
 
 @router.message(F.text == "📊 Статистика")
 @router.callback_query(F.data == "show_stats")
 async def show_stats(event: Message | CallbackQuery, session: AsyncSession) -> None:
     """Показать статистику."""
-    is_callback = isinstance(event, CallbackQuery)
+    if not event.from_user:
+        return
+
+    if isinstance(event, CallbackQuery):
+        await event.answer()
     user_id = event.from_user.id
 
     user_repo = UserRepository(session)
@@ -110,20 +118,19 @@ async def show_stats(event: Message | CallbackQuery, session: AsyncSession) -> N
 
     if not user:
         text = "👋 Сначала зарегистрируйся — /start"
-        if is_callback:
-            await event.message.edit_text(text)
-        else:
+        if isinstance(event, CallbackQuery):
+            if isinstance(event.message, Message):
+                await event.message.edit_text(text)
+        elif isinstance(event, Message):
             await event.answer(text)
-        if is_callback:
-            await event.answer()
         return
 
     rank = await lb_service.get_user_rank(user_id)
-    accuracy = 0
+    accuracy: float = 0.0
     if user.total_answers > 0:
         accuracy = round((user.correct_answers / user.total_answers) * 100, 1)
 
-    win_rate = 0
+    win_rate: float = 0.0
     if user.battles_total > 0:
         win_rate = round((user.battles_won / user.battles_total) * 100, 1)
 
@@ -142,11 +149,13 @@ async def show_stats(event: Message | CallbackQuery, session: AsyncSession) -> N
         f"   Всего XP: {user.total_xp}\n"
     )
 
-    if is_callback:
-        await event.message.edit_text(stats_text, parse_mode="HTML")
-        await event.answer()
-    else:
-        await event.answer(stats_text, parse_mode="HTML")
+    if isinstance(event, CallbackQuery):
+        if isinstance(event.message, Message):
+            await event.message.edit_text(
+                stats_text, reply_markup=back_to_profile_keyboard(), parse_mode="HTML"
+            )
+    elif isinstance(event, Message):
+        await event.answer(stats_text, reply_markup=back_to_profile_keyboard(), parse_mode="HTML")
 
 
 @router.message(F.text == "🎖️ Достижения")
@@ -154,7 +163,11 @@ async def show_stats(event: Message | CallbackQuery, session: AsyncSession) -> N
 @router.callback_query(F.data == "show_achievements")
 async def show_achievements(event: Message | CallbackQuery, session: AsyncSession) -> None:
     """Показать достижения."""
-    is_callback = isinstance(event, CallbackQuery)
+    if not event.from_user:
+        return
+
+    if isinstance(event, CallbackQuery):
+        await event.answer()
     user_id = event.from_user.id
 
     ach_repo = AchievementRepository(session)
@@ -169,7 +182,6 @@ async def show_achievements(event: Message | CallbackQuery, session: AsyncSessio
             f"Всего доступно: {len(all_achievements)} достижений"
         )
     else:
-        earned_codes = {ua.achievement.code for ua in user_achievements}
         lines = [f"🎖️ <b>Достижения</b> ({len(user_achievements)}/{len(all_achievements)})\n"]
 
         for ua in user_achievements:
@@ -182,16 +194,20 @@ async def show_achievements(event: Message | CallbackQuery, session: AsyncSessio
 
         text = "\n".join(lines)
 
-    if is_callback:
-        await event.message.edit_text(text, parse_mode="HTML")
-        await event.answer()
-    else:
-        await event.answer(text, parse_mode="HTML")
+    if isinstance(event, CallbackQuery):
+        if isinstance(event.message, Message):
+            await event.message.edit_text(
+                text, reply_markup=back_to_profile_keyboard(), parse_mode="HTML"
+            )
+    elif isinstance(event, Message):
+        await event.answer(text, reply_markup=back_to_profile_keyboard(), parse_mode="HTML")
 
 
 @router.callback_query(F.data == "settings")
 async def show_settings(callback: CallbackQuery, session: AsyncSession) -> None:
     """Настройки профиля."""
+    if not callback.from_user:
+        return
     user_repo = UserRepository(session)
     user = await user_repo.get_by_id(callback.from_user.id)
 
@@ -199,17 +215,20 @@ async def show_settings(callback: CallbackQuery, session: AsyncSession) -> None:
     if user and user.settings:
         notif_enabled = user.settings.notifications_enabled
 
-    await callback.message.edit_text(
-        "⚙️ <b>Настройки</b>",
-        reply_markup=settings_keyboard(notif_enabled),
-        parse_mode="HTML",
-    )
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(
+            "⚙️ <b>Настройки</b>",
+            reply_markup=settings_keyboard(notif_enabled),
+            parse_mode="HTML",
+        )
     await callback.answer()
 
 
 @router.callback_query(F.data == "toggle_notifications")
 async def toggle_notifications(callback: CallbackQuery, session: AsyncSession) -> None:
     """Переключить уведомления."""
+    if not callback.from_user:
+        return
     user_repo = UserRepository(session)
     user = await user_repo.get_by_id(callback.from_user.id)
 
@@ -218,14 +237,17 @@ async def toggle_notifications(callback: CallbackQuery, session: AsyncSession) -
         await session.flush()
         status = "включены" if user.settings.notifications_enabled else "выключены"
         await callback.answer(f"🔔 Уведомления {status}", show_alert=True)
-        await callback.message.edit_reply_markup(
-            reply_markup=settings_keyboard(user.settings.notifications_enabled)
-        )
+        if isinstance(callback.message, Message):
+            await callback.message.edit_reply_markup(
+                reply_markup=settings_keyboard(user.settings.notifications_enabled)
+            )
 
 
 @router.callback_query(F.data == "toggle_leaderboard")
 async def toggle_leaderboard(callback: CallbackQuery, session: AsyncSession) -> None:
     """Переключить отображение в рейтинге."""
+    if not callback.from_user:
+        return
     user_repo = UserRepository(session)
     user = await user_repo.get_by_id(callback.from_user.id)
 
@@ -240,31 +262,37 @@ async def toggle_leaderboard(callback: CallbackQuery, session: AsyncSession) -> 
 async def delete_account_confirm(callback: CallbackQuery) -> None:
     """Подтверждение удаления аккаунта."""
     from app.keyboards.keyboards import confirm_keyboard
-    await callback.message.edit_text(
-        "⚠️ <b>Удаление аккаунта</b>\n\n"
-        "Все данные (XP, достижения, статистика) будут безвозвратно удалены.\n\n"
-        "Ты уверен?",
-        reply_markup=confirm_keyboard("delete_account"),
-        parse_mode="HTML",
-    )
+
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(
+            "⚠️ <b>Удаление аккаунта</b>\n\n"
+            "Все данные (XP, достижения, статистика) будут безвозвратно удалены.\n\n"
+            "Ты уверен?",
+            reply_markup=confirm_keyboard("delete_account"),
+            parse_mode="HTML",
+        )
     await callback.answer()
 
 
 @router.callback_query(F.data == "confirm_delete_account")
 async def confirm_delete_account(callback: CallbackQuery, session: AsyncSession) -> None:
     """Удаление аккаунта."""
+    if not callback.from_user:
+        return
     user_repo = UserRepository(session)
     await user_repo.soft_delete(callback.from_user.id)
     await session.flush()
-    await callback.message.edit_text(
-        "✅ Аккаунт удалён. Все данные анонимизированы.\n"
-        "Если захочешь вернуться — просто напиши /start"
-    )
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(
+            "✅ Аккаунт удалён. Все данные анонимизированы.\n"
+            "Если захочешь вернуться — просто напиши /start"
+        )
     await callback.answer()
 
 
 @router.callback_query(F.data == "cancel_action")
 async def cancel_action(callback: CallbackQuery) -> None:
     """Отмена действия."""
-    await callback.message.delete()
+    if isinstance(callback.message, Message):
+        await callback.message.delete()
     await callback.answer("Отменено")

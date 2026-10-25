@@ -4,12 +4,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.services.xp_service import (
     DIFFICULTY_MULTIPLIERS,
     LEVEL_NAMES,
-    LEVEL_THRESHOLDS,
     calculate_xp_for_attempt,
     get_level,
     get_progress_bar,

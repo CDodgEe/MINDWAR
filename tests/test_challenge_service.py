@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import json
-import pytest
 
 from app.database.models import (
     AnswerType,
@@ -31,7 +30,7 @@ class TestChallengeServiceHelpers:
             explanation="Объяснение",
             options=json.dumps(["Вариант А", "Вариант Б", "Вариант В"]),
         )
-        service = ChallengeService(session=None)  # session not needed for pure method
+        ChallengeService(session=None)  # session not needed for pure method
         options = json.loads(ch.options)
         assert len(options) == 3
         assert options[0] == "Вариант А"

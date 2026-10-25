@@ -6,6 +6,7 @@ AI Challenge Bot — Главная точка входа приложения.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import sys
 
@@ -37,9 +38,8 @@ async def setup_bot_commands(bot: Bot) -> None:
     commands = [
         BotCommand(command="start", description="🚀 Главное меню и старт"),
         BotCommand(command="battle", description="⚔️ AI Battle — вызов ИИ"),
-        BotCommand(command="daily", description="🧠 Ежедневное испытание"),
         BotCommand(command="rating", description="🏆 Таблица лидеров"),
-        BotCommand(command="profile", description="👤 Мой профиль и достижения"),
+        BotCommand(command="profile", description="👤 Мой профиль и статистика"),
         BotCommand(command="help", description="❓ Как играть и правила"),
     ]
     await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
@@ -57,9 +57,7 @@ async def create_storage(redis_url: str):
         logger.info("Connected to Redis storage successfully.")
         return RedisStorage(redis=redis)
     except Exception as e:
-        logger.warning(
-            f"Redis unavailable ({e}). Falling back to in-memory MemoryStorage for FSM."
-        )
+        logger.warning(f"Redis unavailable ({e}). Falling back to in-memory MemoryStorage for FSM.")
         return MemoryStorage()
 
 
@@ -72,7 +70,9 @@ async def main() -> None:
     logger.info("   «Think smarter. Create better. Challenge AI.»")
     logger.info("========================================")
     logger.info(f"AI Provider: {settings.ai_provider} (Model: {settings.ai_model})")
-    logger.info(f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else 'configured'}")
+    logger.info(
+        f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else 'configured'}"
+    )
 
     if not settings.bot_token:
         logger.error("BOT_TOKEN is not configured! Please provide BOT_TOKEN in .env file.")
@@ -128,7 +128,9 @@ async def main() -> None:
                 drop_pending_updates=True,
             )
             app = web.Application()
-            webhook_handler = SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=settings.webhook_secret or None)
+            webhook_handler = SimpleRequestHandler(
+                dispatcher=dp, bot=bot, secret_token=settings.webhook_secret or None
+            )
             webhook_handler.register(app, path="/webhook")
             setup_application(app, dp, bot=bot)
             runner = web.AppRunner(app)
@@ -154,7 +156,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
+    with contextlib.suppress(KeyboardInterrupt, SystemExit):
         asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        pass

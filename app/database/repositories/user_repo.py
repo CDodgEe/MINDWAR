@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -100,6 +100,15 @@ class UserRepository:
             .values(is_deleted=True, display_name="[Удалён]", username=None)
         )
 
+    async def get_all(self, limit: int = 1000, offset: int = 0) -> list[User]:
+        result = await self.session.execute(
+            select(User)
+            .where(User.is_deleted == False, User.is_banned == False)  # noqa: E712
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all())
+
     async def get_top_users(self, limit: int = 10, offset: int = 0) -> list[User]:
         result = await self.session.execute(
             select(User)
@@ -112,15 +121,12 @@ class UserRepository:
         return list(result.scalars().all())
 
     async def get_user_rank(self, user_id: int) -> int:
-        result = await self.session.execute(
-            select(User.total_xp).where(User.id == user_id)
-        )
+        result = await self.session.execute(select(User.total_xp).where(User.id == user_id))
         user_xp = result.scalar_one_or_none()
         if user_xp is None:
             return 0
         rank_result = await self.session.execute(
-            select(User.id)
-            .where(
+            select(User.id).where(
                 User.is_deleted == False,  # noqa: E712
                 User.is_banned == False,  # noqa: E712
                 User.total_xp > user_xp,
