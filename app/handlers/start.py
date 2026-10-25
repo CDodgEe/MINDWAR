@@ -5,11 +5,13 @@ from __future__ import annotations
 import logging
 import re
 
+from pathlib import Path
+
 from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, FSInputFile, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.repositories import UserRepository
@@ -22,6 +24,19 @@ from app.services.xp_service import LEVEL_ICONS, LEVEL_NAMES, get_progress_bar
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+BANNER_PATH = Path(__file__).resolve().parent.parent / "assets" / "banner.png"
+ALT_BANNER_PATH = Path("фото/d4edb58b-642f-4765-b972-4fb0b2d41c0a.png")
+
+
+def get_banner_file() -> FSInputFile | None:
+    """Возвращает FSInputFile баннера бота, если файл существует."""
+    if BANNER_PATH.exists() and BANNER_PATH.is_file():
+        return FSInputFile(str(BANNER_PATH))
+    if ALT_BANNER_PATH.exists() and ALT_BANNER_PATH.is_file():
+        return FSInputFile(str(ALT_BANNER_PATH))
+    return None
+
 
 WELCOME_TEXT = """⚡ <b>AI CHALLENGE</b>
 
@@ -52,11 +67,27 @@ async def cmd_start(message: Message, session: AsyncSession, state: FSMContext) 
 
     if user:
         # Уже зарегистрирован
-        await message.answer(
+        text = (
             f"⚡ С возвращением, <b>{user.display_name}</b>!\n\n"
             f"Уровень: {LEVEL_ICONS.get(user.level, '🌱')} {LEVEL_NAMES.get(user.level, 'Новичок')}\n"
             f"XP: <code>{user.total_xp}</code>\n"
-            f"Прогресс: {get_progress_bar(user.total_xp)}",
+            f"Прогресс: {get_progress_bar(user.total_xp)}"
+        )
+        banner = get_banner_file()
+        if banner:
+            try:
+                await message.answer_photo(
+                    photo=banner,
+                    caption=text,
+                    reply_markup=main_menu_keyboard(),
+                    parse_mode="HTML",
+                )
+                return
+            except Exception as e:
+                logger.warning("Failed to send banner photo: %s", e)
+
+        await message.answer(
+            text,
             reply_markup=main_menu_keyboard(),
             parse_mode="HTML",
         )
@@ -64,6 +95,19 @@ async def cmd_start(message: Message, session: AsyncSession, state: FSMContext) 
 
     # Новый пользователь
     await state.clear()
+    banner = get_banner_file()
+    if banner:
+        try:
+            await message.answer_photo(
+                photo=banner,
+                caption=WELCOME_TEXT,
+                reply_markup=start_keyboard(),
+                parse_mode="HTML",
+            )
+            return
+        except Exception as e:
+            logger.warning("Failed to send banner photo: %s", e)
+
     await message.answer(
         WELCOME_TEXT,
         reply_markup=start_keyboard(),
@@ -74,11 +118,19 @@ async def cmd_start(message: Message, session: AsyncSession, state: FSMContext) 
 @router.callback_query(F.data == "start_challenge")
 async def on_start_challenge(callback: CallbackQuery, state: FSMContext) -> None:
     """Начало регистрации."""
-    await callback.message.edit_text(
-        "🌐 <b>Выбери язык интерфейса:</b>",
-        reply_markup=language_keyboard(),
-        parse_mode="HTML",
-    )
+    text = "🌐 <b>Выбери язык интерфейса:</b>"
+    if callback.message.photo:
+        await callback.message.edit_caption(
+            caption=text,
+            reply_markup=language_keyboard(),
+            parse_mode="HTML",
+        )
+    else:
+        await callback.message.edit_text(
+            text,
+            reply_markup=language_keyboard(),
+            parse_mode="HTML",
+        )
     await callback.answer()
 
 
@@ -86,12 +138,21 @@ async def on_start_challenge(callback: CallbackQuery, state: FSMContext) -> None
 async def on_language_ru(callback: CallbackQuery, state: FSMContext) -> None:
     """Выбор русского языка."""
     await state.update_data(language="ru")
-    await callback.message.edit_text(
+    text = (
         "👤 <b>Как тебя зовут?</b>\n\n"
         "Введи своё имя или придумай игровой псевдоним.\n"
-        "<i>(Максимум 32 символа, только буквы и цифры)</i>",
-        parse_mode="HTML",
+        "<i>(Максимум 32 символа, только буквы и цифры)</i>"
     )
+    if callback.message.photo:
+        await callback.message.edit_caption(
+            caption=text,
+            parse_mode="HTML",
+        )
+    else:
+        await callback.message.edit_text(
+            text,
+            parse_mode="HTML",
+        )
     await state.set_state(RegistrationStates.waiting_for_name)
     await callback.answer()
 
