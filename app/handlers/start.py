@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from aiogram import F, Router
 from aiogram.filters import CommandStart
@@ -103,6 +104,8 @@ async def on_language_kz_soon(callback: CallbackQuery) -> None:
 @router.message(RegistrationStates.waiting_for_name)
 async def on_name_entered(message: Message, session: AsyncSession, state: FSMContext) -> None:
     """Обработка введённого имени."""
+    raw_name = (message.text or "").strip()
+
     # Проверяем, если отправлена команда или кнопка меню вместо имени
     menu_buttons = {
         "⚔️ AI Battle", "🧠 Ежедневный", "🎯 Выбрать задание",
@@ -127,8 +130,7 @@ async def on_name_entered(message: Message, session: AsyncSession, state: FSMCon
         return
 
     # Фильтруем опасные символы
-    import re
-    clean_name = re.sub(r'[<>&"\'\\]', '', raw_name)
+    clean_name = re.sub(r'[<>&"\'\\]', '', raw_name).strip()
     if not clean_name:
         await message.answer("❌ Некорректное имя. Используй буквы и цифры:")
         return
